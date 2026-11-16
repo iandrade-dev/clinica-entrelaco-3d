@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clínica Entrelaço — Maquete Virtual 3D &amp; Normas</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="src/styles.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <canvas id="scene-canvas"></canvas>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+      <div class="loader-card">
+        <div class="loader-spinner"></div>
+        <h2>Clínica Entrelaço</h2>
+        <p id="loading-status">Carregando maquete 3D</p>
+        <div class="progress-track">
+          <div id="loading-bar" class="progress-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Top HUD (Floating Glass) -->
+    <header class="top-bar">
+      <div class="brand glass-hud">
+        <svg class="brand-mark" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 9.5L12 4l9 5.5v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-10z" />
+          <path d="M9 20.5V13h6v7.5" />
+        </svg>
+        <div class="brand-text">
+          <h1>Clínica Entrelaço</h1>
+          <span class="subtitle">Psicologia • <span class="mono">192 m²</span></span>
+        </div>
+      </div>
+
+      <div class="top-actions glass-hud">
+        <button id="btn-mode-orbit" class="btn-seg active" title="Girar ao redor da maquete">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <ellipse cx="12" cy="12" rx="9" ry="3.5" />
+          </svg>
+          <span>Maquete</span>
+        </button>
+        <button id="btn-mode-free" class="btn-seg" title="Caminhar livremente com WASD + Mouse (Tecla F)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 3l7 4v10l-7 4-7-4V7l7-4z" />
+            <path d="M12 12l7-5M12 12v9M12 12L5 7" />
+          </svg>
+          <span>Câmera Livre</span>
+        </button>
+        <span class="hud-sep" aria-hidden="true"></span>
+        <button id="btn-toggle-zones" class="btn-seg active" title="Mostrar/ocultar guias NBR 9050 e marcadores">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="5" r="2" />
+            <path d="M10 10h4l2 5h3M10 10l-1 6a4 4 0 1 0 6 3" />
+          </svg>
+          <span>NBR 9050</span>
+        </button>
+        <button id="btn-norms-overview" class="btn-seg" title="Equipe, proposta e resumo das normas">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+            <rect x="9" y="3" width="6" height="4" rx="1" />
+            <path d="M9 12h6M9 16h4" />
+          </svg>
+          <span>Equipe &amp; Normas</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Compact Controls Hint -->
+    <div id="controls-hint" class="controls-hint glass-hud">
+      Arraste para girar · Scroll para zoom · Clique nos ambientes
+    </div>
+
+    <!-- Bottom Room Navigation (Floating Glass) -->
+    <nav id="room-nav" class="room-nav glass-hud" aria-label="Ambientes da Clínica"></nav>
+
+    <!-- Right Info Drawer (Solid High-Contrast Surface) -->
+    <aside id="info-drawer" class="info-drawer hidden" aria-live="polite">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <div class="drawer-meta-row">
+            <span id="drawer-category" class="drawer-category">Categoria</span>
+            <span id="drawer-area" class="drawer-area mono">-- m²</span>
+          </div>
+          <h2 id="drawer-title">Nome do Ambiente</h2>
+        </div>
+        <button id="btn-close-drawer" class="btn-icon" aria-label="Fechar painel">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- 2-Second Compliance Strip -->
+      <div class="compliance-strip">
+        <span class="comp-item"><span class="comp-dot prefeitura"></span>NBR 9050</span>
+        <span class="comp-item"><span class="comp-dot anvisa"></span>ANVISA RDC 50</span>
+        <span class="comp-item"><span class="comp-dot cfp"></span>CFP Sigilo</span>
+      </div>
+
+      <p id="drawer-summary" class="drawer-summary"></p>
+
+      <!-- Segmented Tabs (Progressive Disclosure) -->
+      <div class="drawer-tabs" role="tablist">
+        <button class="drawer-tab active" data-tab="acolhimento" role="tab" aria-selected="true">Espaço &amp; Sigilo</button>
+        <button class="drawer-tab" data-tab="acessibilidade" role="tab" aria-selected="false">Acessibilidade</button>
+        <button class="drawer-tab" data-tab="normas" role="tab" aria-selected="false">Normas</button>
+      </div>
+
+      <div class="drawer-body">
+        <section class="tab-panel active" data-panel="acolhimento">
+          <ul id="list-acolhimento" class="clean-list"></ul>
+        </section>
+
+        <section class="tab-panel" data-panel="acessibilidade">
+          <ul id="list-acessibilidade" class="clean-list"></ul>
+        </section>
+
+        <section class="tab-panel" data-panel="normas">
+          <div class="norm-group">
+            <span class="norm-tag prefeitura">Prefeitura / Bombeiros</span>
+            <ul id="list-prefeitura" class="clean-list"></ul>
+          </div>
+          <div class="norm-group">
+            <span class="norm-tag anvisa">ANVISA (Vigilância Sanitária)</span>
+            <ul id="list-anvisa" class="clean-list"></ul>
+          </div>
+          <div class="norm-group">
+            <span class="norm-tag cfp">CFP (Conselho Federal de Psicologia)</span>
+            <ul id="list-cfp" class="clean-list"></ul>
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- General Norms & Team Modal (Solid Surface) -->
+    <div id="norms-modal" class="modal hidden" role="dialog" aria-modal="true">
+      <div class="modal-card">
+        <div class="modal-header">
+          <div>
+            <h2>Clínica Entrelaço — Equipe &amp; Conformidade</h2>
+            <p>Abordagens clínicas e atendimento às normas da Prefeitura, ANVISA e CFP</p>
+          </div>
+          <button id="btn-close-modal" class="btn-icon" aria-label="Fechar modal">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-grid">
+            <div class="modal-card-item">
+              <span class="norm-tag team">Equipe &amp; Abordagens</span>
+              <h4>Psicólogas da Clínica</h4>
+              <ul class="clean-list">
+                <li><strong>Ana:</strong> Gestalt-Terapia (Consultório 01)</li>
+                <li><strong>Lari:</strong> Terapia Cognitivo-Comportamental — TCC (Sala Infantil)</li>
+                <li><strong>Julia:</strong> Psicologia Existencialista (Consultório 03)</li>
+                <li><strong>Maria Eduarda:</strong> Terapia Sistêmica (Consultório 04 — Adulto e Adolescente)</li>
+                <li><strong>Camilly:</strong> Psicodrama (Sala de Psicodrama)</li>
+              </ul>
+            </div>
+
+            <div class="modal-card-item">
+              <span class="norm-tag prefeitura">Prefeitura &amp; NBR 9050</span>
+              <h4>Código de Obras &amp; Acessibilidade</h4>
+              <ul class="clean-list">
+                <li><strong>Rota Acessível:</strong> Rampa ≤ 8,33% com corrimãos em 2 alturas (0,70m e 0,92m) e piso tátil.</li>
+                <li><strong>Portas &amp; Corredores:</strong> Portas ≥ 0,90m e corredor de 1,80m com giro de 360° (Ø 1,50m).</li>
+                <li><strong>Sanitário PCD:</strong> Bacia com barras de apoio, pia suspensa, espelho inclinado e alarme.</li>
+                <li><strong>Segurança (AVCB) &amp; CDC:</strong> Iluminação de emergência, placa de saída e CDC na recepção.</li>
+              </ul>
+            </div>
+
+            <div class="modal-card-item">
+              <span class="norm-tag anvisa">ANVISA (RDC 50, 63 e 222)</span>
+              <h4>Vigilância Sanitária &amp; Biossegurança</h4>
+              <ul class="clean-list">
+                <li><strong>RDC 50/2002:</strong> Consultórios com 17,7 m² (mínimo 7,5 m²), recepção e sanitário acessível.</li>
+                <li><strong>Acabamentos:</strong> Pisos, paredes e brinquedos em materiais lisos, impermeáveis e laváveis.</li>
+                <li><strong>RDC 63/2011:</strong> Álcool 70%, climatização (PMOC) e separação entre copa e DML.</li>
+                <li><strong>RDC 222/2018 (PGRSS):</strong> Coleta seletiva sem cruzamento com áreas clínicas.</li>
+              </ul>
+            </div>
+
+            <div class="modal-card-item">
+              <span class="norm-tag cfp">CFP &amp; Código de Ética</span>
+              <h4>Sigilo, Privacidade &amp; Ética</h4>
+              <ul class="clean-list">
+                <li><strong>Art. 1º 'c' e Art. 9º:</strong> Isolamento acústico, portas maciças, película jateada e mascaramento sonoro.</li>
+                <li><strong>Resolução CFP 01/2009:</strong> Armários com chave para prontuários (mín. 5 anos) e fragmentadora.</li>
+                <li><strong>Resolução CFP 13/2022:</strong> Código de Ética Profissional acessível ao público na recepção.</li>
+                <li><strong>Resolução CFP 31/2022:</strong> Armário trancado exclusivo para testes psicológicos (SATEPSI).</li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="modal-footer-note">
+            Modelos 3D via Polyfork MCP · Navegação livre (tecla <span class="mono">F</span>) e inspeção por ambiente.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating 3D Pin Layer -->
+    <div id="pins-layer" class="pins-layer"></div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
